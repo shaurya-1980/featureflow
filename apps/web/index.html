@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FeatureFlow — Feature Request & Public Roadmap Portal</title>
+    <meta name="description" content="Submit feature requests, upvote ideas, and follow the live product roadmap on FeatureFlow — the community-driven feature portal." />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="FeatureFlow — Feature Request & Public Roadmap Portal" />
+    <meta property="og:description" content="Submit feature requests, upvote ideas, and follow the live product roadmap on FeatureFlow — the community-driven feature portal." />
+    <meta property="og:site_name" content="FeatureFlow" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="FeatureFlow — Feature Request & Public Roadmap Portal" />
+    <meta name="twitter:description" content="Submit feature requests, upvote ideas, and follow the live product roadmap on FeatureFlow — the community-driven feature portal." />
+
+    <!-- Prevent theme flash: apply saved theme before first paint -->
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('ff-theme');
+          var isDark = t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          var theme = isDark ? 'dark' : 'light';
+          document.documentElement.setAttribute('data-theme', theme);
+          if (isDark) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
+
+    <!-- Inter font (400–800 for premium typography) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

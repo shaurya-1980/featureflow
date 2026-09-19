@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <defs>
+    <linearGradient id="ff-brand-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4f46e5" />
+      <stop offset="50%" stop-color="#2563eb" />
+      <stop offset="100%" stop-color="#7c3aed" />
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="32" height="32" rx="8" ry="8" fill="#0f172a" />
+  <rect x="0" y="0" width="32" height="32" rx="8" ry="8" fill="url(#ff-brand-gradient)" opacity="0.25" />
+  <path d="M 7 8 Q 16 6 22 10" stroke="url(#ff-brand-gradient)" stroke-width="2.4" stroke-linecap="round" fill="none" />
+  <path d="M 7 16 Q 14 14 19 16" stroke="url(#ff-brand-gradient)" stroke-width="2.4" stroke-linecap="round" fill="none" />
+  <path d="M 7 8 L 7 25" stroke="url(#ff-brand-gradient)" stroke-width="2.4" stroke-linecap="round" fill="none" />
+  <circle cx="7" cy="8" r="2.5" fill="url(#ff-brand-gradient)" />
+  <circle cx="22" cy="10" r="2" fill="#60a5fa" />
+  <circle cx="7" cy="16" r="2" fill="url(#ff-brand-gradient)" />
+  <circle cx="19" cy="16" r="1.8" fill="#a78bfa" />
+  <circle cx="7" cy="25" r="2.5" fill="url(#ff-brand-gradient)" />
+  <circle cx="25" cy="10" r="1.2" fill="#818cf8" opacity="0.8" />
+</svg>

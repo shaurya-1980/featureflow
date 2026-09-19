@@ -1,0 +1,27 @@
+{
+  "name": "feature-roadmap-portal",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/api",
+    "apps/web"
+  ],
+  "type": "module",
+  "scripts": {
+    "postinstall": "node scripts/patch-cmd.js",
+    "dev": "concurrently --names \"api,web\" --prefix-colors \"cyan,magenta\" \"npm run dev --workspace=apps/api\" \"npm run dev --workspace=apps/web\"",
+    "dev:api": "npm run dev --workspace=apps/api",
+    "dev:web": "npm run dev --workspace=apps/web",
+    "build:web": "npm run build --workspace=apps/web",
+    "seed:admin": "npm run seed:admin --workspace=apps/api",
+    "seed:features": "npm run seed:features --workspace=apps/api",
+    "test": "npm run test:api",
+    "test:api": "npm run test --workspace=apps/api"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
