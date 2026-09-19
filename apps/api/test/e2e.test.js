@@ -68,7 +68,7 @@ describe('Phase 1 & Phase 2 Complete End-to-End Flow', () => {
   let refreshCookie = '';
   let createdPostId = '';
 
-  test('1. Phase 1: Sign up new user', async () => {
+  test('1. Phase 1: Sign up new user and verify demo verification URL', async () => {
     const res = await fetch(`${baseUrl}/auth/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -78,12 +78,28 @@ describe('Phase 1 & Phase 2 Complete End-to-End Flow', () => {
     assert.equal(res.status, 201);
     const body = await res.json();
     assert.equal(body.success, true);
-    assert.ok(body.devVerificationUrl);
+    assert.ok(body.demoVerificationUrl || body.data?.demoVerificationUrl);
+    assert.ok(body.devVerificationUrl); // Backward compatibility check
+
+    const verificationUrlString = body.demoVerificationUrl || body.data?.demoVerificationUrl;
+    assert.ok(verificationUrlString.includes('/verify-email?token='));
 
     // Extract token from verification URL
-    const url = new URL(body.devVerificationUrl);
+    const url = new URL(verificationUrlString);
     devVerificationToken = url.searchParams.get('token');
     assert.ok(devVerificationToken);
+    assert.ok(devVerificationToken.length > 20);
+
+    // Verify user in MongoDB is created unverified and raw token is NOT stored
+    const dbUser = await User.findOne({ email: userCredentials.email }).select('+emailVerificationToken +passwordHash');
+    assert.ok(dbUser);
+    assert.equal(dbUser.isEmailVerified, false);
+    // Token in DB must be a 64-character SHA-256 hash, not the raw token
+    assert.notEqual(dbUser.emailVerificationToken, devVerificationToken);
+    assert.equal(dbUser.emailVerificationToken.length, 64);
+    // Password must be bcrypt hash, not plaintext
+    assert.notEqual(dbUser.passwordHash, userCredentials.password);
+    assert.ok(dbUser.passwordHash.startsWith('$2b$'));
   });
 
   test('2. Phase 1: Login before email verification is forbidden (403)', async () => {
@@ -101,7 +117,42 @@ describe('Phase 1 & Phase 2 Complete End-to-End Flow', () => {
     assert.equal(body.success, false);
   });
 
-  test('3. Phase 1: Verify email using token', async () => {
+  test('3. Phase 1: Invalid or expired verification token is rejected (400)', async () => {
+    // Test invalid token
+    const invalidRes = await fetch(`${baseUrl}/auth/verify-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: 'completely-invalid-random-token' }),
+    });
+
+    assert.equal(invalidRes.status, 400);
+    const invalidBody = await invalidRes.json();
+    assert.equal(invalidBody.success, false);
+
+    // Test expired token by temporarily adjusting user expiry
+    await User.updateOne(
+      { email: userCredentials.email },
+      { emailVerificationExpires: new Date(Date.now() - 1000) }
+    );
+
+    const expiredRes = await fetch(`${baseUrl}/auth/verify-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: devVerificationToken }),
+    });
+
+    assert.equal(expiredRes.status, 400);
+    const expiredBody = await expiredRes.json();
+    assert.equal(expiredBody.success, false);
+
+    // Restore future expiry for subsequent successful verification test
+    await User.updateOne(
+      { email: userCredentials.email },
+      { emailVerificationExpires: new Date(Date.now() + 24 * 60 * 60 * 1000) }
+    );
+  });
+
+  test('4. Phase 1: Verify email using valid token', async () => {
     const res = await fetch(`${baseUrl}/auth/verify-email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -111,9 +162,15 @@ describe('Phase 1 & Phase 2 Complete End-to-End Flow', () => {
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.success, true);
+
+    // Verify DB user is now marked verified and token fields cleared
+    const dbUser = await User.findOne({ email: userCredentials.email }).select('+emailVerificationToken +emailVerificationExpires');
+    assert.equal(dbUser.isEmailVerified, true);
+    assert.equal(dbUser.emailVerificationToken, undefined);
+    assert.equal(dbUser.emailVerificationExpires, undefined);
   });
 
-  test('4. Phase 1: Log in with verified credentials and receive tokens', async () => {
+  test('5. Phase 1: Log in with verified credentials and receive tokens', async () => {
     const res = await fetch(`${baseUrl}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -138,7 +195,7 @@ describe('Phase 1 & Phase 2 Complete End-to-End Flow', () => {
     refreshCookie = setCookie.split(';')[0];
   });
 
-  test('5. Phase 1: Verify /auth/me returns user profile', async () => {
+  test('6. Phase 1: Verify /auth/me returns user profile', async () => {
     const res = await fetch(`${baseUrl}/auth/me`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
@@ -150,7 +207,7 @@ describe('Phase 1 & Phase 2 Complete End-to-End Flow', () => {
     assert.equal(body.user.isEmailVerified, true);
   });
 
-  test('6. Phase 1: Refresh token rotation', async () => {
+  test('7. Phase 1: Refresh token rotation', async () => {
     const res = await fetch(`${baseUrl}/auth/refresh`, {
       method: 'POST',
       headers: {
@@ -171,7 +228,7 @@ describe('Phase 1 & Phase 2 Complete End-to-End Flow', () => {
     }
   });
 
-  test('7. Phase 2: Create a feature request with access token', async () => {
+  test('8. Phase 2: Create a feature request with access token', async () => {
     const res = await fetch(`${baseUrl}/posts`, {
       method: 'POST',
       headers: {
@@ -197,7 +254,7 @@ describe('Phase 1 & Phase 2 Complete End-to-End Flow', () => {
     assert.ok(createdPostId);
   });
 
-  test('8. Phase 2: Public feature feed displays the created request', async () => {
+  test('9. Phase 2: Public feature feed displays the created request', async () => {
     const res = await fetch(`${baseUrl}/posts?category=Integrations&search=GitHub`);
     assert.equal(res.status, 200);
     const body = await res.json();
@@ -210,7 +267,7 @@ describe('Phase 1 & Phase 2 Complete End-to-End Flow', () => {
     assert.equal(match.hasVoted, false); // Anonymous viewer
   });
 
-  test('9. Phase 2: Upvote the feature request', async () => {
+  test('10. Phase 2: Upvote the feature request', async () => {
     const res = await fetch(`${baseUrl}/posts/${createdPostId}/vote`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${accessToken}` },
@@ -223,7 +280,7 @@ describe('Phase 1 & Phase 2 Complete End-to-End Flow', () => {
     assert.equal(body.hasVoted, true);
   });
 
-  test('10. Phase 2: Duplicate vote is safely ignored and count stays 1', async () => {
+  test('11. Phase 2: Duplicate vote is safely ignored and count stays 1', async () => {
     const res = await fetch(`${baseUrl}/posts/${createdPostId}/vote`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${accessToken}` },
@@ -235,7 +292,7 @@ describe('Phase 1 & Phase 2 Complete End-to-End Flow', () => {
     assert.equal(body.hasVoted, true);
   });
 
-  test('11. Phase 2: Authenticated feed query shows hasVoted: true', async () => {
+  test('12. Phase 2: Authenticated feed query shows hasVoted: true', async () => {
     const res = await fetch(`${baseUrl}/posts?search=Automated+GitHub`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
@@ -248,7 +305,7 @@ describe('Phase 1 & Phase 2 Complete End-to-End Flow', () => {
     assert.equal(match.voteCount, 1);
   });
 
-  test('12. Phase 2: Remove vote decrements count back to 0 and hasVoted: false', async () => {
+  test('13. Phase 2: Remove vote decrements count back to 0 and hasVoted: false', async () => {
     const res = await fetch(`${baseUrl}/posts/${createdPostId}/vote`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${accessToken}` },
@@ -263,7 +320,7 @@ describe('Phase 1 & Phase 2 Complete End-to-End Flow', () => {
 
   let createdCommentId = '';
 
-  test('13. Phase 3: Fetch feature detail via GET /api/posts/:id', async () => {
+  test('14. Phase 3: Fetch feature detail via GET /api/posts/:id', async () => {
     const res = await fetch(`${baseUrl}/posts/${createdPostId}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
@@ -277,7 +334,7 @@ describe('Phase 1 & Phase 2 Complete End-to-End Flow', () => {
     assert.equal(body.post.hasVoted, false);
   });
 
-  test('14. Phase 3: Create root comment on feature request', async () => {
+  test('15. Phase 3: Create root comment on feature request', async () => {
     const res = await fetch(`${baseUrl}/posts/${createdPostId}/comments`, {
       method: 'POST',
       headers: {
@@ -299,7 +356,7 @@ describe('Phase 1 & Phase 2 Complete End-to-End Flow', () => {
     assert.ok(createdCommentId);
   });
 
-  test('15. Phase 3: Create threaded reply to root comment', async () => {
+  test('16. Phase 3: Create threaded reply to root comment', async () => {
     const res = await fetch(`${baseUrl}/posts/${createdPostId}/comments`, {
       method: 'POST',
       headers: {
@@ -318,7 +375,7 @@ describe('Phase 1 & Phase 2 Complete End-to-End Flow', () => {
     assert.equal(body.comment.parentComment.toString(), createdCommentId.toString());
   });
 
-  test('16. Phase 3: Fetch threaded comments and verify 1-level hierarchy', async () => {
+  test('17. Phase 3: Fetch threaded comments and verify 1-level hierarchy', async () => {
     const res = await fetch(`${baseUrl}/posts/${createdPostId}/comments`);
 
     assert.equal(res.status, 200);
@@ -329,7 +386,7 @@ describe('Phase 1 & Phase 2 Complete End-to-End Flow', () => {
     assert.equal(body.comments[0].replies.length, 1);
   });
 
-  test('17. Phase 3: Soft delete comment and verify sanitized content', async () => {
+  test('18. Phase 3: Soft delete comment and verify sanitized content', async () => {
     const res = await fetch(`${baseUrl}/comments/${createdCommentId}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${accessToken}` },
@@ -346,7 +403,7 @@ describe('Phase 1 & Phase 2 Complete End-to-End Flow', () => {
     assert.equal(deletedComment.contentMarkdown, '[Comment deleted]');
   });
 
-  test('18. Phase 1: Logout clears session', async () => {
+  test('19. Phase 1: Logout clears session', async () => {
     const res = await fetch(`${baseUrl}/auth/logout`, {
       method: 'POST',
       headers: {

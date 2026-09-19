@@ -13,7 +13,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import axiosClient from '../api/axiosClient.js';
 import AuthLayout from '../components/layout/AuthLayout.jsx';
 import { Card } from '../components/ui/card.jsx';
@@ -23,6 +23,7 @@ import { Alert, AlertTitle, AlertDescription } from '../components/ui/alert.jsx'
 import { Spinner } from '../components/ui/spinner.jsx';
 
 const VerifyEmailPage = () => {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const tokenFromUrl = searchParams.get('token') || '';
 
@@ -90,10 +91,11 @@ const VerifyEmailPage = () => {
               <AlertDescription>{message}</AlertDescription>
             </Alert>
             <Button
+              id="verify-continue-login-btn"
               className="w-full"
               variant="default"
               style={{ marginTop: '1rem', height: 'auto', padding: '0.75rem', backgroundColor: '#16a34a' }}
-              onClick={() => { window.location.href = '/login'; }}
+              onClick={() => { navigate('/login'); }}
             >
               Continue to Sign In
             </Button>

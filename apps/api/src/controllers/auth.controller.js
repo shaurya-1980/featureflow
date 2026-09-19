@@ -74,21 +74,30 @@ export const signup = async (req, res) => {
     isEmailVerified: false,
   });
 
-  // SIMULATED EMAIL — no real provider. In dev, expose the token/URL directly
-  // so the developer can verify the flow without a mail server.
-  const devVerificationUrl = `${env.clientOrigin}/verify-email?token=${rawVerificationToken}`;
+  // SIMULATED EMAIL — no real email provider configured.
+  // Construct demo verification URL using configured clientOrigin.
+  const clientOrigin = (env.clientOrigin || '').split(',')[0].trim().replace(/\/$/, '');
+  const demoVerificationUrl = `${clientOrigin}/verify-email?token=${rawVerificationToken}`;
 
   if (!env.isProduction) {
-    // Always log server-side regardless of environment.
-    console.log(`[auth] DEV — Email verification URL for ${email}: ${devVerificationUrl}`);
+    // Detailed log for local development.
+    console.log(`[auth] DEV — Email verification URL for ${email}: ${demoVerificationUrl}`);
   } else {
-    // In production, still log (server log only — NOT in response body).
-    console.log(`[auth] PROD — Email verification token generated for ${email} (not exposed in response)`);
+    // In production, log simulated flow without exposing sensitive raw token.
+    console.log(`[auth] PROD — Demo verification link generated for ${email}`);
   }
 
+  const safeUserData = safeUser(user);
+
   const responseBody = createdResponse({
-    message: 'Account created successfully. Please verify your email to continue.',
-    ...(!env.isProduction && { devVerificationUrl }),
+    message: 'Account created successfully. Please verify your email using the demo verification link to continue.',
+    user: safeUserData,
+    demoVerificationUrl,
+    devVerificationUrl: demoVerificationUrl, // backward compatibility
+    data: {
+      user: safeUserData,
+      demoVerificationUrl,
+    },
   });
 
   res.status(201).json(responseBody);

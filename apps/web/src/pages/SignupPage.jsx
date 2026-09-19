@@ -58,8 +58,13 @@ const SignupPage = () => {
 
     try {
       const data = await signup(form);
-      if (data.devVerificationUrl) {
-        setDevUrl(data.devVerificationUrl);
+      const verificationUrl =
+        data.demoVerificationUrl ||
+        data.devVerificationUrl ||
+        data.data?.demoVerificationUrl;
+
+      if (verificationUrl) {
+        setDevUrl(verificationUrl);
       } else {
         navigate('/login', { state: { message: data.message } });
       }
@@ -81,19 +86,44 @@ const SignupPage = () => {
           <p style={styles.subtitle}>Join the community to shape the future of our product roadmap.</p>
         </div>
 
-        {/* Dev verification URL */}
+        {/* Demo verification URL section */}
         {devUrl && (
-          <div style={styles.devBox} role="alert">
+          <div style={styles.devBox} role="region" aria-label="Demo Verification Link">
             <div style={styles.devHeader}>
-              <span aria-hidden="true">🛠️</span>
-              <strong>Dev Mode — Email Verification Link</strong>
+              <span aria-hidden="true" style={{ fontSize: '1.05rem' }}>✉️</span>
+              <strong>Demo verification link (Simulated email verification)</strong>
             </div>
-            <a href={devUrl} style={styles.devLink} target="_blank" rel="noreferrer">
+            <p style={styles.devHelp}>
+              In this demo deployment, email dispatch is simulated. Your account has been created, and you can complete verification immediately using the link below:
+            </p>
+            <div style={{ marginTop: '0.75rem', marginBottom: '0.75rem' }}>
+              <Button
+                id="open-demo-verification-btn"
+                type="button"
+                className="saas-button-primary w-full"
+                style={{ height: 'auto', padding: '0.65rem 1rem', fontSize: '0.875rem', fontWeight: 600 }}
+                onClick={() => {
+                  if (devUrl.startsWith('http')) {
+                    try {
+                      const parsed = new URL(devUrl);
+                      navigate(`${parsed.pathname}${parsed.search}`);
+                    } catch {
+                      window.location.href = devUrl;
+                    }
+                  } else {
+                    navigate(devUrl);
+                  }
+                }}
+              >
+                Open Demo Verification Link &rarr;
+              </Button>
+            </div>
+            <a href={devUrl} style={styles.devLink}>
               {devUrl}
             </a>
-            <p style={styles.devHelp}>
-              Click the link above to verify your email in this test environment, then{' '}
-              <Link to="/login" className="auth-link" style={{ fontSize: '0.8rem' }}>
+            <p style={{ ...styles.devHelp, marginTop: '0.35rem' }}>
+              After completing verification, you can{' '}
+              <Link to="/login" className="auth-link" style={{ fontSize: '0.8rem', fontWeight: 600 }}>
                 sign in
               </Link>
               .
